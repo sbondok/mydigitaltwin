@@ -163,7 +163,7 @@ def generate_answer_streaming(question, relevant_chunks, chat_history):
 
 # ======== الواجهة الرئيسية ========
 st.title("🎙️ التوأم التقني - بندق")
-st.caption("تحدث أو اكتب - بندق سيرد عليك بصوته")
+st.caption("🎙️ صوت → رد بالصوت | ⌨️ نص → رد بالنص")
 st.divider()
 
 knowledge_base = load_knowledge_base()
@@ -202,16 +202,19 @@ st.markdown("**🎙️ سجّل سؤالك:**")
 audio_input = st.audio_input("اضغط للتسجيل")
 
 question = None
+input_was_voice = False  # ← هنا نتتبع نوع الإدخال
 
 if audio_input:
     with st.spinner("🎧 جاري تحويل الصوت إلى نص..."):
         question = speech_to_text(audio_input)
     st.info(f"📝 تم التعرف على: **{question}**")
+    input_was_voice = True  # ← الإدخال كان صوتاً
 
 # -------- إدخال النص --------
 text_input = st.chat_input("أو اكتب سؤالك هنا...")
 if text_input:
     question = text_input
+    input_was_voice = False  # ← الإدخال كان نصاً
 
 # -------- معالجة السؤال --------
 if question:
@@ -231,8 +234,8 @@ if question:
             generate_answer_streaming(question, relevant_chunks, chat_history)
         )
 
-        # تشغيل صوت بندق
-        if voice_enabled:
+        # تشغيل صوت بندق فقط إذا كان الإدخال صوتاً ← التعديل الرئيسي
+        if voice_enabled and input_was_voice:
             with st.spinner("🎙️ بندق يتكلم..."):
                 audio_bytes = text_to_speech(full_answer)
                 st.audio(audio_bytes, format="audio/mp3", autoplay=True)

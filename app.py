@@ -7,6 +7,16 @@ from openai import OpenAI
 import anthropic
 from rank_bm25 import BM25Okapi
 from elevenlabs import ElevenLabs
+import re
+
+def normalize_arabic(text):
+    text = re.sub(r'[\u064B-\u065F\u0610-\u061A\u06D6-\u06DC\u06DF-\u06E4\u06E7\u06E8\u06EA-\u06ED]', '', text)
+    text = re.sub(r'[\u0640]', '', text)
+    text = re.sub(r'[إأآا]', 'ا', text)
+    text = re.sub(r'[يى]', 'ي', text)
+    text = re.sub(r'[ةه]', 'ه', text)
+    return text
+
 
 load_dotenv()
 
@@ -31,7 +41,8 @@ def load_knowledge_base(file_path="knowledge_base.json"):
 # -------- بناء BM25 Index --------
 @st.cache_resource
 def build_bm25_index(_knowledge_base):
-    tokenized_corpus = [chunk["text"].split() for chunk in _knowledge_base]
+    # tokenized_corpus = [chunk["text"].split() for chunk in _knowledge_base]
+    tokenized_corpus = [normalize_arabic(chunk["text"]).split() for chunk in _knowledge_base]
     return BM25Okapi(tokenized_corpus)
 
 # -------- حساب التشابه --------
@@ -79,7 +90,8 @@ def hybrid_search(question, knowledge_base, bm25_index, top_k=5, rrf_k=60):
     ]
     semantic_ranked = np.argsort(semantic_scores)[::-1].tolist()
 
-    tokenized_query = question.split()
+    # tokenized_query = question.split()
+    tokenized_query = normalize_arabic(question).split()
     bm25_scores     = bm25_index.get_scores(tokenized_query)
     bm25_ranked     = np.argsort(bm25_scores)[::-1].tolist()
 

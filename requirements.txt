@@ -1,0 +1,7 @@
+streamlit>=1.31.0
+openai
+anthropic
+elevenlabs
+rank_bm25
+numpy
+python-dotenv

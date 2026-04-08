@@ -1,6 +1,6 @@
 import os
 import json
-import asyncio
+
 import numpy as np
 import streamlit as st
 from dotenv import load_dotenv
@@ -8,7 +8,7 @@ from openai import OpenAI
 import anthropic
 from rank_bm25 import BM25Okapi
 from elevenlabs import ElevenLabs
-import edge_tts
+
 import re
 
 def normalize_arabic(text):
@@ -16,7 +16,7 @@ def normalize_arabic(text):
     text = re.sub(r'[\u0640]', '', text)
     text = re.sub(r'[إأآا]', 'ا', text) 
     text = re.sub(r'[يى]', 'ي', text)
-    # text = re.sub(r'[ةه]', 'ه', text)
+    text = re.sub(r'[ةه]', 'ه', text)
     return text
 
 
@@ -154,8 +154,8 @@ def speech_to_text(audio_file):
         st.error(f"❌ فشل تحويل الصوت إلى نص: {e}")
         return None
 
-# -------- تحويل النص إلى صوت بندق - ElevenLabs (Premium) --------
-def text_to_speech_premium(text):
+# -------- تحويل النص إلى صوت بندق - ElevenLabs --------
+def text_to_speech_bondok(text):
     try:
         audio_generator = client_eleven.text_to_speech.convert(
             voice_id=BOND_VOICE_ID,
@@ -167,25 +167,6 @@ def text_to_speech_premium(text):
         return audio_bytes
     except Exception as e:
         st.error(f"❌ فشل تحويل النص إلى صوت (ElevenLabs): {e}")
-        return None
-
-# -------- تحويل النص إلى صوت - Edge TTS (مجاني للتجربة) --------
-EDGE_TTS_VOICE = "ar-EG-ShakirNeural"  # صوت عربي مصري مجاني
-
-async def _edge_tts_generate(text):
-    communicate = edge_tts.Communicate(text, EDGE_TTS_VOICE)
-    audio_chunks = []
-    async for chunk in communicate.stream():
-        if chunk["type"] == "audio":
-            audio_chunks.append(chunk["data"])
-    return b"".join(audio_chunks)
-
-def text_to_speech_free(text):
-    try:
-        audio_bytes = asyncio.run(_edge_tts_generate(text))
-        return audio_bytes
-    except Exception as e:
-        st.error(f"❌ فشل تحويل النص إلى صوت (Edge TTS): {e}")
         return None
 
 # -------- علامة "لم أجد" لتخطي الصوت --------
@@ -258,15 +239,10 @@ knowledge_base = load_knowledge_base()
 bm25_index     = build_bm25_index(knowledge_base)
 st.success(f"✅ Knowledge Base محمّل - {len(knowledge_base)} chunk جاهزة")
 
-# اختيار وضع الصوت
+# تفعيل / تعطيل صوت بندق
 col1, col2 = st.columns([3, 1])
 with col2:
-    voice_mode = st.selectbox(
-        "🔊 وضع الصوت",
-        options=["🔇 بدون صوت", "🆓 تجريبي (مجاني)", "🎙️ صوت بندق (Premium)"],
-        index=1,
-        help="التجريبي: صوت مجاني عربي | Premium: صوت بندق الشخصي"
-    )
+    voice_enabled = st.toggle("🎙️ صوت بندق", value=True)
 
 # تهيئة المحادثة
 if "messages" not in st.session_state:
@@ -329,18 +305,12 @@ if question:
                 generate_answer_streaming(question, relevant_chunks, chat_history)
             )
 
-            # تشغيل الصوت فقط إذا كان الإدخال صوتاً + ليس رد "لم أجد"
-            if input_was_voice and voice_mode != "🔇 بدون صوت" and not is_not_found_answer(full_answer):
-                if voice_mode == "🎙️ صوت بندق (Premium)":
-                    with st.spinner("🎙️ بندق يتكلم..."):
-                        audio_bytes = text_to_speech_premium(full_answer)
-                        if audio_bytes:
-                            st.audio(audio_bytes, format="audio/mp3", autoplay=True)
-                else:  # وضع تجريبي مجاني
-                    with st.spinner("🔊 جاري تحويل النص إلى صوت..."):
-                        audio_bytes = text_to_speech_free(full_answer)
-                        if audio_bytes:
-                            st.audio(audio_bytes, format="audio/mp3", autoplay=True)
+            # تشغيل صوت بندق فقط إذا كان الإدخال صوتاً + الصوت مفعّل + ليس رد "لم أجد"
+            if input_was_voice and voice_enabled and not is_not_found_answer(full_answer):
+                with st.spinner("🎙️ بندق يتكلم..."):
+                    audio_bytes = text_to_speech_bondok(full_answer)
+                    if audio_bytes:
+                        st.audio(audio_bytes, format="audio/mp3", autoplay=True)
 
             with st.expander("📚 المصادر والتفاصيل التقنية"):
                 st.caption(f"🔄 **السؤال المُحسَّن:** {rewritten_query}")

@@ -5,3 +5,5 @@ elevenlabs
 rank_bm25
 numpy
 python-dotenv
+python-docx
+edge-tts

@@ -178,7 +178,7 @@ def is_not_found_answer(answer):
     return any(m in answer for m in markers)
 
 # -------- الـ System Prompt --------
--
+
 SYSTEM_PROMPT = """أنت نموذج رقمي يحاكي تفكير وأسلوب صاحب هذه المعرفة بدقة تامة.
 
 قواعد صارمة جداً:
